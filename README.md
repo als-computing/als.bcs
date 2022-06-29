@@ -35,13 +35,18 @@ Installation
 ### Using pip
 
 ```bash
+# PyPI
+python -m pip install als.bcs
+
+# -- OR --
+
 # Local copy of the project repository
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt -e .
 
 # -- OR --
 
 # Local tarball, uses static version file generated during build
-python -m pip install als.bcs-0.0.1.tar.gz
+python -m pip install als.bcs-0.1.1.tar.gz
 ```
 
 

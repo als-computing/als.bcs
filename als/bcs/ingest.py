@@ -14,7 +14,6 @@ if DEBUG:
 else:
     logger.setLevel(logging.INFO)
 
-# from dotenv import load_dotenv
 import sys
 import os
 import argparse
@@ -38,51 +37,6 @@ from .scans import get_scan_file_path, import_scan_file, is_flying_scan
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Configure environment
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# load_dotenv()  # import environment variables from .env
-
-# BCS402_DATA_PATH = str(os.environ.get("BCS402_DATA_PATH", "."))
-# VMM_DATA_PATH = str(os.environ.get("VMM_DATA_PATH", "."))
-# RSXS_DATA_PATH = str(os.environ.get("RSXS_DATA_PATH", "."))
-# SCVM_DATA_PATH = str(os.environ.get("SCVM_DATA_PATH", "."))
-# BCS631_DATA_PATH = str(os.environ.get("BCS631_DATA_PATH", "."))
-
-# BCS402_SCAN_PATH = str(os.environ.get("BCS402_SCAN_PATH", "."))
-# VMM_SCAN_PATH = str(os.environ.get("VMM_SCAN_PATH", "."))
-# RSXS_SCAN_PATH = str(os.environ.get("RSXS_SCAN_PATH", "."))
-# SCVM_SCAN_PATH = str(os.environ.get("SCVM_SCAN_PATH", "."))
-# BCS631_SCAN_PATH = str(os.environ.get("BCS631_SCAN_PATH", "."))
-
-# PC01_SCAN_PATH = str(os.environ.get("PC01_SCAN_PATH", "."))
-
-# src_data_basepaths = dict({
-#     "BCS402": BCS402_DATA_PATH,
-#     "VMM": VMM_DATA_PATH,
-#     "RSXS": RSXS_DATA_PATH,
-#     "SCVM": SCVM_DATA_PATH,
-#     "BCS631": BCS631_DATA_PATH,
-#     })
-
-# src_scan_basepaths = dict({
-#     "BCS402": BCS402_SCAN_PATH,
-#     "VMM": VMM_SCAN_PATH,
-#     "RSXS": RSXS_SCAN_PATH,
-#     "SCVM": SCVM_SCAN_PATH,
-#     "BCS631": BCS631_SCAN_PATH,
-#     })
-# sources = ["BCS402", "VMM", "RSXS", "SCVM", "BCS631"]
-
-# default_replace_dict = OrderedDict([
-#         ("//bl402pc01/experiments/", f"{PC01_SCAN_PATH}/"),
-#     ])
-# subpath_replace_dicts = OrderedDict([
-#     (source, dict({
-#         "C:/experiments/": f"{src_scan_basepaths[source]}/",
-#         "C:/Experiments/": f"{src_scan_basepaths[source]}/",
-#         })) for source in sources
-#     ])
-# for source in sources:
-#     subpath_replace_dicts[source].update(**default_replace_dict)
-
 default_tz_name = 'America/Los_Angeles'
 default_timezone = pytz.timezone(default_tz_name)
 
