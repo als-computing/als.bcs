@@ -1,4 +1,4 @@
-# `als.bcs`
+# als.bcs
 
 Extract data and metadata from text data files that were created by
 the Beamline Controls System (BCS) at the Advanced Light Source (ALS)
@@ -46,7 +46,7 @@ python -m pip install -r requirements.txt -e .
 # -- OR --
 
 # Local tarball, uses static version file generated during build
-python -m pip install als.bcs-0.1.1.tar.gz
+python -m pip install als.bcs-0.1.2.tar.gz
 ```
 
 
