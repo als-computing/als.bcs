@@ -1,0 +1,10 @@
+include README.md
+include LICENSE.txt
+include setup.cfg
+include requirements.txt
+
+include versioneer.py
+include als/bcs/_version.py
+
+global-exclude *.py[co]
+global-exclude *.env
