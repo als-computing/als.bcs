@@ -46,7 +46,7 @@ python -m pip install -r requirements.txt -e .
 # -- OR --
 
 # Local tarball, uses static version file generated during build
-python -m pip install als.bcs-0.1.2.tar.gz
+python -m pip install als.bcs-0.2.0.tar.gz
 ```
 
 
