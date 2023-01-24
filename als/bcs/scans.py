@@ -161,14 +161,25 @@ def import_scan_file(scan_file_path, file_number=1):
     nrows = 1 + last_linenum - first_linenum
     logging.debug("nrows: {}".format(nrows))
 
-    df = pd.read_table(
-        scan_file_path,
-        delimiter='\t',
-        header=header_linenum,
-        skip_blank_lines=False,
-        skiprows=skiprows,
-        nrows=nrows,
-    )
+    try:
+        df = pd.read_table(
+            scan_file_path,
+            delimiter='\t',
+            header=header_linenum,
+            skip_blank_lines=False,
+            skiprows=skiprows,
+            nrows=nrows,
+        )
+    except pd.errors.ParserError:
+        # First line is a comment, and header line does not end with '\t'
+        df = pd.read_table(
+            scan_file_path,
+            delimiter='\t',
+            header=header_linenum,
+            skip_blank_lines=False,
+            skiprows=skiprows + [first_linenum],
+            nrows=(nrows - 1),
+        )
     # Ignore comment lines in the scan file
     def is_comment(value: str):
         return value.strip().startswith('#')
@@ -195,8 +206,17 @@ def import_scan_file(scan_file_path, file_number=1):
                 flying_name = first_line.strip()
                 logging.debug(f"flying_name: {flying_name}")
                 
-                # df.columns[-1] = flying_name
-                df.columns = [*df.columns[:-1], flying_name]
+                # Add Flying Motor to column names
+                if df.columns[-1].startswith("Unnamed"):
+                    df.columns = [*df.columns[:-1], flying_name]
+                else:
+                    # Repair scan file with correct number of columns
+                    index_name = df.columns[0]
+                    col_names = [*df.columns[1:], flying_name]
+                    df.columns = col_names
+                    df.index.rename(index_name, inplace=True)
+                    df = df.reset_index()
+                print(f'{df.columns=}')
 
     return(df)
 
