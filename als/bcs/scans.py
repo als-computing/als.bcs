@@ -241,14 +241,25 @@ def is_flying_scan(scan_file_path, file_number=1):
     nrows = 1 + last_linenum - first_linenum
     logging.debug("nrows: {}".format(nrows))
 
-    df = pd.read_table(
-        scan_file_path,
-        delimiter='\t',
-        header=header_linenum,
-        skip_blank_lines=False,
-        skiprows=skiprows,
-        nrows=nrows,
-    )
+    try:
+        df = pd.read_table(
+            scan_file_path,
+            delimiter='\t',
+            header=header_linenum,
+            skip_blank_lines=False,
+            skiprows=skiprows,
+            nrows=nrows,
+        )
+    except pd.errors.ParserError:
+        # First line is a comment, and header line does not end with '\t'
+        df = pd.read_table(
+            scan_file_path,
+            delimiter='\t',
+            header=header_linenum,
+            skip_blank_lines=False,
+            skiprows=skiprows + [first_linenum],
+            nrows=(nrows - 1),
+        )
     
     # Check whether this is a Flying Scan; extract flying motor name
     if header_linenum > 0:
