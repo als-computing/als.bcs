@@ -7,6 +7,8 @@
 
 import logging
 
+logger = logging.getLogger(__name__)
+
 import os
 
 import pandas as pd
@@ -69,9 +71,9 @@ def read_data_file(
     if subpath_replace_dict is None:
         subpath_replace_dict = dict()
 
-    logging.debug("\n\nRead_data_file...")
+    logger.debug("\n\nRead_data_file...")
 
-    logging.debug("Opening: {}".format(data_file_path))
+    logger.debug("Opening: {}".format(data_file_path))
 
     isTimeScan = False
     file_name = os.path.basename(data_file_path)
@@ -80,7 +82,7 @@ def read_data_file(
 
     with open(data_file_path, 'r') as data_file:
         for (header_row, file_line) in enumerate(data_file):
-            logging.debug("[{}]: {}".format(header_row, file_line))
+            logger.debug("[{}]: {}".format(header_row, file_line))
             if file_line.startswith("Time"):
                 break
             if file_line[0].isdigit() and not isTimeScan:
@@ -99,8 +101,8 @@ def read_data_file(
     )[0]
 
     if len(data) > 0:
-        logging.debug("...filename: {}".format(data["filename"][0]))
-    # logging.debug("...filename: {}".format(data["filename"].values[0]))
+        logger.debug("...filename: {}".format(data["filename"][0]))
+    # logger.debug("...filename: {}".format(data["filename"].values[0]))
 
     df = data
 
