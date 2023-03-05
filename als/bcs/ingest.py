@@ -16,23 +16,13 @@ else:
 
 import sys
 import os
-import argparse
 
-from datetime import datetime, date, time, timedelta
-from dateutil import relativedelta as rel_date
+from datetime import datetime
 import pytz
 
-from numpy import array, source
-import numpy as np
-import glob
-import pandas as pd
-from pandas.errors import ParserError as pandas_ParserError
-import itertools as it
-from collections import OrderedDict
-
-from .data import get_data_file_numbers, read_data_file
-from .find import find_data_files_in_date_range, replace_subpath, daterange
-from .scans import get_scan_file_path, import_scan_file, is_flying_scan
+from .data import get_data_file_numbers
+from .find import replace_subpath
+from .scans import import_scan_file, is_flying_scan, ScanFileNotFoundError
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Configure environment
@@ -154,7 +144,12 @@ def get_data_file_header(
                     scan_file_path, subpath_replace_dict)
                 # logging.debug(f"{get_filename_base(data_file_path)}")
                 # logging.debug(f"...{(scan_number, file_number, repeat_number) = }")
-                motor_df = import_scan_file(scan_file_path, file_number)
+                try:
+                    motor_df = import_scan_file(scan_file_path, file_number)
+                except FileNotFoundError:
+                    raise ScanFileNotFoundError(
+                        scan_file_path=scan_file_path, data_file_path=data_file_path,
+                    )
                 # logging.debug(f"...{motor_df = }")
                 header_info["motors"] = motor_df.columns.values
                 header_info["motor_values"] = motor_df.values.T
