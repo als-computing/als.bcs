@@ -7,6 +7,8 @@
 
 import logging
 
+logger = logging.getLogger(__name__)
+
 import os
 
 from datetime import date, timedelta
@@ -36,13 +38,13 @@ def replace_subpath(file_path, subpath_replace_dict):
 
         new_file_path = new_file_path.replace(old_subpath, new_subpath)
 
-        logging.debug(
+        logger.debug(
                 "Scan file (updated path): {:s} <WAS: {:s}, NOW: {:s}>".format(
                 new_file_path, old_subpath, new_subpath,
                 )
             )
 
-    logging.debug("Scan file (updated path): {:s}".format(new_file_path))
+    logger.debug("Scan file (updated path): {:s}".format(new_file_path))
 
     return(new_file_path)
 
@@ -113,13 +115,13 @@ def find_data_files_in_date_range(
                 data_file_date.strftime("%y%m%d"),
                 data_file_search_string,
                 )
-            logging.debug("Search: " + data_path_search_string)
+            logger.debug("Search: " + data_path_search_string)
             match_results = glob.glob(data_path_search_string)
             if len(match_results) > 0:
                 matching_file_paths += match_results
 
-    logging.info("\n\nfind_data_files_in_date_range...")
-    logging.info("len(matching_file_paths): {}".format(len(matching_file_paths)))
+    logger.info("\n\nfind_data_files_in_date_range...")
+    logger.info("len(matching_file_paths): {}".format(len(matching_file_paths)))
 
     return(matching_file_paths)
 

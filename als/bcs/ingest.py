@@ -7,12 +7,7 @@
 
 import logging
 
-logger = logging.getLogger()
-DEBUG = False
-if DEBUG:
-    logger.setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 import sys
 import os
@@ -37,8 +32,7 @@ def get_file_timestamps(file_path: str):
     """Return file timestamps as dict"""
     file_stats = os.stat(file_path)
     sys_platform = sys.platform
-    if DEBUG:
-        logging.debug(f"{sys_platform = }")
+    logger.debug(f"{sys_platform = }")
     if sys_platform.lower() == "windows":
         file_create_timestamp = file_stats.st_ctime	# Windows
     elif sys_platform.lower() == "darwin":
@@ -93,8 +87,7 @@ def get_data_file_header(
     if subpath_replace_dict is None:
         subpath_replace_dict = dict()
 
-    if DEBUG:
-        logging.debug(f"***{data_file_path}")
+    logger.debug(f"***{data_file_path}")
     
     header_info = dict(
         scan_type=None,
@@ -114,8 +107,7 @@ def get_data_file_header(
     with open(data_file_path, 'r') as data_file:
         for (header_linenum, file_line) in enumerate(data_file):
 
-            if DEBUG:
-                logging.debug(header_linenum, file_line)
+            logger.debug(header_linenum, file_line)
 
             if get_motor_name:
                 motor_name = file_line.strip()
@@ -142,15 +134,15 @@ def get_data_file_header(
                  ) = get_data_file_numbers(data_file_path)
                 scan_file_path = replace_subpath(
                     scan_file_path, subpath_replace_dict)
-                # logging.debug(f"{get_filename_base(data_file_path)}")
-                # logging.debug(f"...{(scan_number, file_number, repeat_number) = }")
+                # logger.debug(f"{get_filename_base(data_file_path)}")
+                # logger.debug(f"...{(scan_number, file_number, repeat_number) = }")
                 try:
                     motor_df = import_scan_file(scan_file_path, file_number)
                 except FileNotFoundError:
                     raise ScanFileNotFoundError(
                         scan_file_path=scan_file_path, data_file_path=data_file_path,
                     )
-                # logging.debug(f"...{motor_df = }")
+                # logger.debug(f"...{motor_df = }")
                 header_info["motors"] = motor_df.columns.values
                 header_info["motor_values"] = motor_df.values.T
                 if is_flying_scan(scan_file_path, file_number):

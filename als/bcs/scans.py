@@ -7,6 +7,8 @@
 
 import logging
 
+logger = logging.getLogger(__name__)
+
 from numpy import mod
 import numpy as np
 import pandas as pd
@@ -45,7 +47,7 @@ def get_scan_file_path(data_file_path):
     with open(data_file_path, 'r') as data_file:
         for (header_linenum, file_line) in enumerate(data_file):
 
-            logging.debug(header_linenum, file_line)
+            logger.debug(header_linenum, file_line)
 
             if file_line.startswith("From File"):
                 scan_file_used = True
@@ -56,7 +58,7 @@ def get_scan_file_path(data_file_path):
                 if scan_file_path == "All Magnets":
                     # This is a quirk of a new file format
                     continue
-                logging.debug("Scan file: {:s}".format(scan_file_path))
+                logger.debug("Scan file: {:s}".format(scan_file_path))
                 return(scan_file_path)
                 break
             if file_line[0].isdigit():
@@ -78,7 +80,7 @@ def get_scan_header_line_number(scan_file_path):
     with open(scan_file_path, 'r') as scan_file:
         for (header_linenum, file_line) in enumerate(scan_file):
 
-            logging.debug(header_linenum, file_line)
+            logger.debug(header_linenum, file_line)
 
             # if file_line[0].isdigit() or file_line.lower().startswith("file"):
             if (
@@ -122,7 +124,7 @@ def get_scan_line_numbers(scan_file_path, file_number=1):
             if linenum <= header_linenum:
                 continue
 
-            logging.debug(linenum, file_line)
+            logger.debug(linenum, file_line)
 
             if file_line.lower().startswith("file"):
                 output_file_number += 1
@@ -162,10 +164,10 @@ def import_scan_file(scan_file_path, file_number=1):
         scan_file_path, file_number)
 
     skiprows = np.arange(header_linenum + 1, first_linenum)
-    logging.debug("skiprows: {}".format(skiprows))
+    logger.debug("skiprows: {}".format(skiprows))
 
     nrows = 1 + last_linenum - first_linenum
-    logging.debug("nrows: {}".format(nrows))
+    logger.debug("nrows: {}".format(nrows))
 
     try:
         df = pd.read_table(
@@ -197,20 +199,20 @@ def import_scan_file(scan_file_path, file_number=1):
     if header_linenum > 0:
         with open(scan_file_path, 'r') as scan_file:
             first_line = scan_file.readline().rstrip()
-            logging.debug(f"first_line: {first_line}")
+            logger.debug(f"first_line: {first_line}")
         
         # first_line_parts = first_line.lower().rsplit('flying ', 1)
         first_line_parts = first_line.replace(
             'flying ', 'Flying ').rsplit('Flying ', 1)
-        logging.debug(f"first_line_parts #1: {first_line_parts}")
+        logger.debug(f"first_line_parts #1: {first_line_parts}")
         if len(first_line_parts) > 1:
             first_line = first_line_parts[-1]
             first_line_parts = first_line.rsplit('(', 1)
-            logging.debug(f"first_line_parts #2: {first_line_parts}")
+            logger.debug(f"first_line_parts #2: {first_line_parts}")
             if len(first_line_parts) > 1:
                 first_line = first_line_parts[0]
                 flying_name = first_line.strip()
-                logging.debug(f"flying_name: {flying_name}")
+                logger.debug(f"flying_name: {flying_name}")
                 
                 # Add Flying Motor to column names
                 if df.columns[-1].startswith("Unnamed"):
@@ -242,10 +244,10 @@ def is_flying_scan(scan_file_path, file_number=1):
         scan_file_path, file_number)
 
     skiprows = np.arange(header_linenum + 1, first_linenum)
-    logging.debug("skiprows: {}".format(skiprows))
+    logger.debug("skiprows: {}".format(skiprows))
 
     nrows = 1 + last_linenum - first_linenum
-    logging.debug("nrows: {}".format(nrows))
+    logger.debug("nrows: {}".format(nrows))
 
     try:
         df = pd.read_table(
@@ -271,20 +273,20 @@ def is_flying_scan(scan_file_path, file_number=1):
     if header_linenum > 0:
         with open(scan_file_path, 'r') as scan_file:
             first_line = scan_file.readline().rstrip()
-            logging.debug(f"first_line: {first_line}")
+            logger.debug(f"first_line: {first_line}")
         
         # first_line_parts = first_line.lower().rsplit('flying ', 1)
         first_line_parts = first_line.replace(
             'flying ', 'Flying ').rsplit('Flying ', 1)
-        logging.debug(f"first_line_parts #1: {first_line_parts}")
+        logger.debug(f"first_line_parts #1: {first_line_parts}")
         if len(first_line_parts) > 1:
             first_line = first_line_parts[-1]
             first_line_parts = first_line.rsplit('(', 1)
-            logging.debug(f"first_line_parts #2: {first_line_parts}")
+            logger.debug(f"first_line_parts #2: {first_line_parts}")
             if len(first_line_parts) > 1:
                 first_line = first_line_parts[0]
                 flying_name = first_line.strip()
-                logging.debug(f"flying_name: {flying_name}")
+                logger.debug(f"flying_name: {flying_name}")
 
                 return True
                 
