@@ -7,19 +7,25 @@
 
 import logging
 
-import sys
-import os
-
-from datetime import datetime, date, time, timedelta
-from dateutil import relativedelta as rel_date
-import pytz
-
-from numpy import array, mod
+from numpy import mod
 import numpy as np
-import glob
 import pandas as pd
 
-from .find import find_data_files_in_date_range, replace_subpath
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CLASSES
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class ScanFileNotFoundError(FileNotFoundError):
+    """BCS Scan File was not found"""
+    def __init__(
+            self, *args: object, scan_file_path: str, data_file_path: str,
+            ) -> None:
+        message = (
+            "Could not find the input scan file "
+            f"'{scan_file_path}' for data file '{data_file_path}'; "
+            "verify that it has not been moved or deleted."
+        )
+        super().__init__(message, *args)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
