@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 import sys
 import os
+from enum import auto, IntEnum
 
 from datetime import datetime
 import pytz
@@ -103,6 +104,62 @@ def get_data_file_header(
     get_pause_motor_name = False
     get_scan_file_path = False
     get_memo = False
+    is_time_scan = False
+
+    def handle_time_scan_numbers(header_linenum: int, file_line: str) -> bool:
+        """Process a TimeScan header line that starts with a number.
+
+        TimeScans have multiple header lines that start with a number.
+        Extract and store the relevant information from the header line.
+
+        header_linenum: int, 0-based index of the current file line
+        file_line: str, data from the current file line
+
+        RETURNS: bool, True if this is a header line; False otherwise.
+        """
+        class LINES(IntEnum):
+            MEMO_LENGTH = auto()
+            MEMO = auto()
+            SAMPLES = auto()
+            ACQUIRE = auto()
+        
+        nonlocal get_memo
+        nonlocal header_info
+        str_values = file_line.strip().split()
+
+        if header_linenum == LINES.MEMO_LENGTH:
+            if len(str_values) < 1:
+                msg = f"Header line {header_linenum} must start with integer"
+                raise ValueError(msg)
+            memo_length = int(str_values[0]) - 1  # zero-terminated string
+            if memo_length >= 0:
+                get_memo = True
+                return True
+        elif header_linenum == LINES.MEMO:
+            # This should only execute if header is malformed
+            value_str = file_line.rstrip()
+            header_info["memo"] = value_str
+            get_memo = False
+            return True
+        elif header_linenum == LINES.SAMPLES:
+            if len(str_values) < 1:
+                msg = f"Header line {header_linenum} must start with integer"
+                raise ValueError(msg)
+            header_info["num_samples"] = int(str_values[0])
+            return True
+        elif header_linenum == LINES.ACQUIRE:
+            if len(str_values) < 5:
+                msg = (f"Header line {header_linenum} "
+                        "must have at least 5 numbers")
+                raise ValueError(msg)
+            period_sec = float(str_values[1])
+            count_sec = float(str_values[4])
+            delay_sec = max(0., period_sec - count_sec)
+            header_info["count_sec"] = count_sec
+            header_info["delay_sec"] = delay_sec
+            return True
+        else:
+            return False
 
     with open(data_file_path, 'r') as data_file:
         for (header_linenum, file_line) in enumerate(data_file):
@@ -191,7 +248,6 @@ def get_data_file_header(
                 header_info["scan_type"] = "Trajectory"
                 get_pause_motor_name = True
                 continue
-            # TODO: Add Time Scan
             # TODO: Add Two Motor Scan
             # TODO: Add Image Scan
             if file_line.startswith("Start"):
@@ -237,6 +293,14 @@ def get_data_file_header(
                 # Is length needed for multi-line memo?
                 continue
             if file_line[0].isdigit():
+                if is_time_scan and handle_time_scan_numbers(
+                        header_linenum, file_line):
+                    continue
+                if header_linenum == 1:
+                    is_time_scan = True
+                    header_info["scan_type"] = "Time"
+                    handle_time_scan_numbers(header_linenum, file_line)
+                    continue
                 # We've gone past the header
                 header_linenum -= 1
                 header_info["motor_header_linenum"] = header_linenum
