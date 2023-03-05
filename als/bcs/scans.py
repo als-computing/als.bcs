@@ -23,6 +23,22 @@ from .find import find_data_files_in_date_range, replace_subpath
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CLASSES
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class ScanFileNotFoundError(FileNotFoundError):
+    """BCS Scan File was not found"""
+    def __init__(
+            self, *args: object, scan_file_path: str, data_file_path: str,
+            ) -> None:
+        message = (
+            "Could not find the input scan file "
+            f"'{scan_file_path}' for data file '{data_file_path}'; "
+            "verify that it has not been moved or deleted."
+        )
+        super().__init__(message, *args)
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTIONS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def get_scan_file_path(data_file_path):
