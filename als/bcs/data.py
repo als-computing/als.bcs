@@ -10,9 +10,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 import os
+from dataclasses import dataclass
+from typing import Optional
 
 import pandas as pd
 
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CLASSES
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@dataclass
+class DataFileNumbers:
+    """Holds the (scan, file, repeat) numbers from a data file path."""
+    scan: int
+    file: Optional[int] = None
+    repeat: Optional[int] = None
+
+    @classmethod
+    def from_path(cls, data_file_path: str) -> "DataFileNumbers":
+        """Construct DataFileNumbers from the data file path."
+
+        data_file_path: Fully qualified file path (dir + file) of data.
+
+        RETURNS: a new intance of DataFileNumbers
+    """
+        return DataFileNumbers(*get_data_file_numbers(data_file_path))
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTIONS
