@@ -105,7 +105,7 @@ def read_data_file(
     with open(data_file_path, 'r') as data_file:
         for (header_row, file_line) in enumerate(data_file):
             logger.debug("[{}]: {}".format(header_row, file_line))
-            if file_line.startswith("Time"):
+            if file_line.startswith("Time") or file_line.startswith("Frame"):
                 break
             if file_line[0].isdigit() and not isTimeScan:
                 header_row -= 1
