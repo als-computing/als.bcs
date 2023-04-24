@@ -11,12 +11,21 @@ logger = logging.getLogger(__name__)
 
 import sys
 import os
+
+from collections import OrderedDict
 from enum import auto, IntEnum
+from pathlib import Path
+from typing import Any, Mapping
 
 from datetime import datetime
 import pytz
 
-from .data import get_data_file_numbers
+try:
+    import ujson as json
+except ImportError:
+    import json
+
+from .data import DataFileNumbers, get_data_file_numbers, read_data_file
 from .find import replace_subpath
 from .scans import import_scan_file, is_flying_scan, ScanFileNotFoundError
 
@@ -61,7 +70,7 @@ def get_filename_base(file_path: str):
     return filename_base
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def timestamp_to_string(timestamp: float, tz_name=default_tz_name):
+def timestamp_to_string(timestamp: float, tz_name: str=default_tz_name):
     """Convert timestamp to timezone-aware string"""
     def format_datetime(datetime_obj):
         # return datetime.strftime(datetime_obj, "%Y-%m-%d %H:%M:%S.%f [%z]")
@@ -70,6 +79,118 @@ def timestamp_to_string(timestamp: float, tz_name=default_tz_name):
     timezone = pytz.timezone(tz_name)
     datetime_obj = datetime.fromtimestamp(timestamp, tz=timezone)
     return format_datetime(datetime_obj)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def timestamp_to_iso8601(timestamp: float, tz_name: str=default_tz_name):
+    """Convert timestamp to timezone-aware ISO 8601 string"""
+    # Add TZ awareness
+    timezone = pytz.timezone(tz_name)
+    datetime_obj = datetime.fromtimestamp(timestamp, tz=timezone)
+    return datetime_obj.isoformat()
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def detect_mimetype(file_path: str, default_mimetype: str=""):
+    """Deduce the MIME type of a BCS (meta)data file"""
+
+    def bcs_scantype(file_path: Path, default_type: str="") -> str:
+        """Check for a BCS (meta)data file name"""
+        if file_path.name.startswith("TrajScan"):
+            return "traj-scan"
+        elif file_path.name.startswith("SigScan"):
+            return "sig-scan"
+        elif file_path.name.startswith("MotScan"):
+            return "mot-scan"
+        elif file_path.name.startswith("TimeScan"):
+            return "time-scan"
+        elif file_path.name.startswith("Single Motor Scan"):
+            return "bl-sig-scan"
+        elif file_path.name.startswith("Single Motor Flying Scan"):
+            return "bl-sig-fly-scan"
+        elif file_path.name.startswith("Trajectory Scan"):
+            return "bl-traj-scan"
+        elif file_path.name.startswith("Automation Run"):
+            return "bl-auto-run"
+        else:
+            return default_type
+
+    file_path = Path(file_path)
+    scan_type = bcs_scantype(file_path)
+
+    if file_path.suffix == ".txt" and scan_type:
+        return f"text/als/bcs/{scan_type}"
+    elif file_path.suffixes == [".sdc", ".json"] and scan_type:
+        return f"json/als/bcs/{scan_type}"
+    else:
+        return default_mimetype
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def read_bcs_txt_file(
+        file_path: str, 
+        subpath_replace_dict: Mapping[str, str]=None,
+        ) -> Mapping[str, Any]:
+    """Extract data and metadata from a BCS data file"""
+    subpath_replace_dict = subpath_replace_dict or {}
+
+    # Get some file metadata from the operating system
+    data_file_numbers = DataFileNumbers(
+        *get_data_file_numbers(file_path)
+    )
+    data_file_timestamps = get_file_timestamps(file_path)
+
+    # Get the file header metadata
+    file_header = get_data_file_header(
+        file_path, 
+        subpath_replace_dict=subpath_replace_dict,
+        )
+    
+    data_df = read_data_file(
+        file_path, 
+        subpath_replace_dict=subpath_replace_dict,
+        )
+    
+    metadata = OrderedDict((
+        ("file_info", OrderedDict((
+            ("scan_number", data_file_numbers.scan),
+            ("file_number", data_file_numbers.file),
+            ("repeat_number", data_file_numbers.repeat),
+            ("created_time", data_file_timestamps["created_timestamp"]),
+            ("modified_time", data_file_timestamps["modified_timestamp"]),
+            ("created_iso8601", timestamp_to_iso8601(
+                data_file_timestamps["created_timestamp"])
+                ),
+            ("modified_iso8601", timestamp_to_iso8601(
+                data_file_timestamps["modified_timestamp"])
+                ),
+            ))
+        ),
+        ("file_header", file_header),
+    ))
+    # Replace datetime.date objects with compatible field
+    if file_header.get("date", None):
+        iso_date = metadata["file_header"]["date"].isoformat()
+        metadata["file_header"]["date"] = iso_date
+
+    # Add metadata from optional JSON sidecar
+    json_sidecar_path = file_path.replace(".txt", ".sdc.json")
+    if Path(json_sidecar_path).exists() and (json_sidecar_path != file_path):
+        sidecar = read_json_sidecar(json_sidecar_path)
+        metadata["experiment"] = sidecar.get("Experiment", {})
+        metadata["scan_setup"] = sidecar.get("Scan Setup", {})
+
+    return dict(data=data_df, metadata=metadata)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def read_json_sidecar(file_path: str) -> Mapping[str, Any]:
+    """Extract metadata from a BCS JSON sidecar file"""
+
+    with open(file_path) as json_file:
+        sidecar = json.load(json_file)
+    
+    return sidecar
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def get_data_file_header(
@@ -279,7 +400,7 @@ def get_data_file_header(
                 try:
                     value = int(value_str)  # Repeat number
                 except ValueError:
-                    value = value_str  # Summary file; e.g. Avg, Sume, etc.
+                    value = value_str  # Summary file; e.g. Avg, Sum, etc.
                 header_info["repeat_number"] = value
                 continue
             if file_line.startswith("Bi-directional"):
