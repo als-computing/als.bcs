@@ -276,7 +276,11 @@ def get_data_file_header(
                 continue
             if file_line.startswith("Scan Number"):
                 value_str = file_line.strip().split("Scan Number: ", 1)[1]
-                header_info["repeat_number"] = int(value_str)
+                try:
+                    value = int(value_str)  # Repeat number
+                except ValueError:
+                    value = value_str  # Summary file; e.g. Avg, Sume, etc.
+                header_info["repeat_number"] = value
                 continue
             if file_line.startswith("Bi-directional"):
                 value_str = file_line.strip().split("Bi-directional: ", 1)[1]
