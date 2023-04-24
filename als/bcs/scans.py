@@ -55,12 +55,13 @@ def get_scan_file_path(data_file_path):
             if scan_file_used and file_line.rstrip():
                 scan_file_path_raw = file_line.rstrip()
                 scan_file_path = scan_file_path_raw.replace("\\", "/")
-                if scan_file_path == "All Magnets":
-                    # This is a quirk of a new file format
+                if ":/" in scan_file_path:
+                    logger.debug("Scan file: {:s}".format(scan_file_path))
+                    return(scan_file_path)
+                else:
+                    # This line indicates the pause/stop motor name or is blank
+                    scan_file_path = ""
                     continue
-                logger.debug("Scan file: {:s}".format(scan_file_path))
-                return(scan_file_path)
-                break
             if file_line[0].isdigit():
                 # This data file did not use an input scan file
                 return("")
