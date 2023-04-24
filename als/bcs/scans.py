@@ -83,7 +83,6 @@ def get_scan_header_line_number(scan_file_path):
 
             logger.debug(header_linenum, file_line)
 
-            # if file_line[0].isdigit() or file_line.lower().startswith("file"):
             if (
                     file_line[0].isdigit() or 
                     file_line.lower().startswith("file") or
