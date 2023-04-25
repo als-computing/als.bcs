@@ -40,7 +40,7 @@ default_timezone = pytz.timezone(default_tz_name)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTIONS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def get_file_timestamps(file_path: str):
+def get_file_timestamps(file_path: str) -> Mapping[str, Any]:
     """Return file timestamps as dict"""
     file_stats = os.stat(file_path)
     sys_platform = sys.platform
@@ -60,19 +60,19 @@ def get_file_timestamps(file_path: str):
         )
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def get_filename(file_path: str):
+def get_filename(file_path: str) -> str:
     """Extract file name from file path"""
     return os.path.basename(file_path)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def get_filename_base(file_path: str):
+def get_filename_base(file_path: str) -> str:
     """Extract file name base (no extension) from file path"""
     filename = get_filename(file_path)
     filename_base = filename.rsplit('.', 1)[0]
     return filename_base
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def timestamp_to_string(timestamp: float, tz_name: str=default_tz_name):
+def timestamp_to_string(timestamp: float, tz_name: str=default_tz_name) -> str:
     """Convert timestamp to timezone-aware string"""
     def format_datetime(datetime_obj):
         # return datetime.strftime(datetime_obj, "%Y-%m-%d %H:%M:%S.%f [%z]")
@@ -84,7 +84,8 @@ def timestamp_to_string(timestamp: float, tz_name: str=default_tz_name):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def timestamp_to_iso8601(timestamp: float, tz_name: str=default_tz_name):
+def timestamp_to_iso8601(timestamp: float, tz_name: str=default_tz_name,
+                         ) -> str:
     """Convert timestamp to timezone-aware ISO 8601 string"""
     # Add TZ awareness
     timezone = pytz.timezone(tz_name)
@@ -93,7 +94,7 @@ def timestamp_to_iso8601(timestamp: float, tz_name: str=default_tz_name):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def detect_mimetype(file_path: str, default_mimetype: str=""):
+def detect_mimetype(file_path: str, default_mimetype: str="") -> str:
     """Deduce the MIME type of a BCS (meta)data file"""
 
     def bcs_scantype(file_path: Path, default_type: str="") -> str:
@@ -241,7 +242,7 @@ def read_automation_run(file_path: str) -> Sequence[Mapping[str, Any]]:
 def get_data_file_header(
         data_file_path: str, 
         subpath_replace_dict: dict=None,
-        ):
+        ) -> Mapping[str, Any]:
     """Extract the data file header.
 
         data_file_path: Fully qualified file path (dir + file) of data.
@@ -481,7 +482,7 @@ def get_data_file_header(
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def main():
+def main() -> int:
     """The main routine."""
     return(0)
     
