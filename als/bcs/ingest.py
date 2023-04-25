@@ -108,13 +108,17 @@ def detect_mimetype(file_path: str, default_mimetype: str="") -> str:
         elif file_path.name.startswith("TimeScan"):
             return "time-scan"
         elif file_path.name.startswith("Single Motor Scan"):
-            return "bl-sig-scan"
+            return "bl-scan/sig-scan"
         elif file_path.name.startswith("Single Motor Flying Scan"):
-            return "bl-sig-fly-scan"
+            return "bl-scan/sig-fly-scan"
         elif file_path.name.startswith("Trajectory Scan"):
-            return "bl-traj-scan"
+            return "bl-scan/traj-scan"
+        elif file_path.name.startswith("From File Scan"):
+            return "bl-scan/file-scan"
+        elif file_path.name.startswith("Time Scan"):
+            return "bl-scan/time-scan"
         elif file_path.name.startswith("Automation Run"):
-            return "bl-auto-run"
+            return "bl-scan/auto-run"
         else:
             return default_type
 
@@ -143,7 +147,7 @@ def read_bcs_txt_file(
     )
     data_file_timestamps = get_file_timestamps(file_path)
 
-    if detect_mimetype(file_path) == "text/als/bcs/bl-auto-run":
+    if detect_mimetype(file_path) == "text/als/bcs/bl-scan/auto-run":
         # Metadata for an Automation Run has a different format
         scan_runs = read_automation_run(file_path)
         file_header = {"scan_runs": scan_runs}
