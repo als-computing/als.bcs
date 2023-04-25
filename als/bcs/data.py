@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 import pandas as pd
 
@@ -24,7 +24,7 @@ class DataFileNumbers:
     """Holds the (scan, file, repeat) numbers from a data file path."""
     scan: int
     file: Optional[int] = None
-    repeat: Optional[int] = None
+    repeat: Optional[Union[int, str]] = None
 
     @classmethod
     def from_path(cls, data_file_path: str) -> "DataFileNumbers":
@@ -59,7 +59,11 @@ def get_data_file_numbers(data_file_path):
 
     file_basename_parts = file_basename_parts[0].rsplit('-', 1)
     if len(file_basename_parts) > 1:
-        repeat_number = int(file_basename_parts[1])
+        try:
+            repeat_number = int(file_basename_parts[1])
+        except ValueError as e:
+            # This is a summary file; e.g. Avg, Sum, etc.
+            repeat_number = file_basename_parts[1]
 
     file_basename_parts = file_basename_parts[0].rsplit('Scan', 1)
     if len(file_basename_parts) > 1:
