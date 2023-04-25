@@ -15,7 +15,7 @@ import os
 from collections import OrderedDict
 from enum import auto, IntEnum
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from datetime import datetime
 import pytz
@@ -24,6 +24,8 @@ try:
     import ujson as json
 except ImportError:
     import json
+
+import pandas as pd
 
 from .data import DataFileNumbers, get_data_file_numbers, read_data_file
 from .find import replace_subpath
@@ -140,16 +142,28 @@ def read_bcs_txt_file(
     )
     data_file_timestamps = get_file_timestamps(file_path)
 
-    # Get the file header metadata
-    file_header = get_data_file_header(
-        file_path, 
-        subpath_replace_dict=subpath_replace_dict,
-        )
-    
-    data_df = read_data_file(
-        file_path, 
-        subpath_replace_dict=subpath_replace_dict,
-        )
+    if detect_mimetype(file_path) == "text/als/bcs/bl-auto-run":
+        # Metadata for an Automation Run has a different format
+        scan_runs = read_automation_run(file_path)
+        file_header = {"scan_runs": scan_runs}
+        # There is no corresponding data table
+        data_df = None
+    else:
+        # Get the file header metadata
+        file_header = get_data_file_header(
+            file_path, 
+            subpath_replace_dict=subpath_replace_dict,
+            )
+        # Extract the data table
+        data_df = read_data_file(
+            file_path, 
+            subpath_replace_dict=subpath_replace_dict,
+            )
+
+    # Replace datetime.date objects with compatible field
+    if file_header.get("date", None):
+        iso_date = file_header["date"].isoformat()
+        file_header["date"] = iso_date
     
     metadata = OrderedDict((
         ("file_info", OrderedDict((
@@ -168,10 +182,6 @@ def read_bcs_txt_file(
         ),
         ("file_header", file_header),
     ))
-    # Replace datetime.date objects with compatible field
-    if file_header.get("date", None):
-        iso_date = metadata["file_header"]["date"].isoformat()
-        metadata["file_header"]["date"] = iso_date
 
     # Add metadata from optional JSON sidecar
     json_sidecar_path = file_path.replace(".txt", ".sdc.json")
@@ -191,6 +201,41 @@ def read_json_sidecar(file_path: str) -> Mapping[str, Any]:
         sidecar = json.load(json_file)
     
     return sidecar
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def read_automation_run(file_path: str) -> Sequence[Mapping[str, Any]]:
+    """Extract metadata from a BCS Automation Run summary file"""
+
+    with open(file_path, 'r') as run_file:
+        for (header_row, file_line) in enumerate(run_file):
+            logger.debug("[{}]: {}".format(header_row, file_line))
+            if file_line.startswith("Time"):
+                break
+            if file_line[0].isdigit():
+                header_row -= 1
+                break
+
+    runs_df = pd.read_csv(
+        file_path,
+        delimiter='\t',
+        header=header_row,
+        skip_blank_lines=False,
+        )
+    path_columns = (
+        col for col in runs_df.columns 
+            if "path" in col.lower().split()
+        )
+    for col in path_columns:
+        runs_df[col] = runs_df[col].apply(
+            lambda path: path.replace("\\", "/")
+        )
+    runs = sorted(
+        runs_df.to_dict('records'), 
+        key=lambda row: row["Time"],
+        )
+    
+    return runs
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def get_data_file_header(
