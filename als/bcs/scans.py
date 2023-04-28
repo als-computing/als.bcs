@@ -236,6 +236,13 @@ def import_scan_file(scan_file_path, file_number=1):
     df.drop(comment_indices, inplace=True)
     # Ignore empty lines in the scan file
     df.dropna(how='all', inplace=True)
+
+    # There can be at most ONE unnamed column (count time or flying motor)
+    unnamed_columns = df.columns[
+        df.columns.str.startswith("Unnamed")
+        ]
+    excess_unnamed_columns = unnamed_columns[1:]
+    df.drop(columns=excess_unnamed_columns, inplace=True)
     
     # Check whether this is a Flying Scan; extract flying motor name
     if header_linenum > 0:
