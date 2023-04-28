@@ -77,19 +77,31 @@ def get_scan_header_line_number(scan_file_path):
         RETURNS: Zero-based line number of motor header row.
             -1 = Not found
     """
+    consecutive_skipped_lines = 0
+    def is_blank_or_comment(file_line: str) -> bool:
+        line_content = file_line.strip()
+        if (not line_content) or (line_content.startswith('#')):
+            return True
+        else:
+            return False
 
     with open(scan_file_path, 'r') as scan_file:
         for (header_linenum, file_line) in enumerate(scan_file):
 
             logger.debug(header_linenum, file_line)
 
-            if (
-                    file_line[0].isdigit() or 
-                    file_line.lower().startswith("file") or
-                    (file_line[0]=='-' and file_line[1].isdigit())
-                    ):
-                header_linenum -= 1
-                return(header_linenum)
+            if is_blank_or_comment(file_line):
+                consecutive_skipped_lines += 1
+            else:
+                if (
+                        file_line[0].isdigit() or 
+                        file_line.lower().startswith("file") or
+                        (file_line[0]=='-' and file_line[1].isdigit())
+                        ):
+                    header_linenum -= consecutive_skipped_lines + 1
+                    return(header_linenum)
+                
+                consecutive_skipped_lines = 0
 
     return(-1)
 
@@ -105,7 +117,8 @@ def get_scan_line_numbers(scan_file_path, file_number=1):
             first = -1, if file_number not found
     """
 
-    (first_line, last_line) = (-1, -1)  # Not found
+    file_number_NOT_FOUND = (-1, -1)
+    (first_line, last_line) = file_number_NOT_FOUND
 
     header_linenum = get_scan_header_line_number(scan_file_path)
     if header_linenum == -1:
@@ -118,6 +131,8 @@ def get_scan_line_numbers(scan_file_path, file_number=1):
         (first_line, last_line) = (next_linenum, next_linenum)
 
     with open(scan_file_path, 'r') as scan_file:
+        subscan_is_empty = True
+
         for (linenum, file_line) in enumerate(scan_file):
 
             # Move past header line
@@ -125,27 +140,40 @@ def get_scan_line_numbers(scan_file_path, file_number=1):
                 continue
 
             logger.debug(linenum, file_line)
+            # print(f'{subscan_is_empty = }; {output_file_number = }; {(first_line, last_line) = }')
 
             if file_line.lower().startswith("file"):
-                output_file_number += 1
+                if not subscan_is_empty:
+                    output_file_number += 1
+                    subscan_is_empty = True
                 if output_file_number == file_number:
                     next_linenum = linenum + 1
                     (first_line, last_line) = (next_linenum, next_linenum)
                 elif output_file_number > file_number:
                     return (first_line, last_line)
             else:
-                if output_file_number == file_number:
-                    last_line = linenum
+                line_content = file_line.strip()
+                # print(f'{line_content = }; {not line_content = }')
+                if line_content and not line_content.startswith('#'):
+                    subscan_is_empty = False
+                    if output_file_number == file_number:
+                        last_line = linenum
+                elif (not line_content) and subscan_is_empty:
+                    # Avoid parse error when subscan starts with an empty line
+                    first_line += 1
+                    last_line += 1
         else:
+            if subscan_is_empty:
+                return file_number_NOT_FOUND
             # This is a new Beamline/Integrated scan
-            max_file_number = output_file_number
-            if file_number > max_file_number:
-                file_number = mod(file_number, max_file_number)
-                if file_number == 0:
-                    file_number = max_file_number
-                (first_line, 
-                 last_line,
-                 ) = get_scan_line_numbers(scan_file_path, file_number)
+            # max_file_number = output_file_number
+            # if file_number > max_file_number:
+            #     file_number = mod(file_number, max_file_number)
+            #     if file_number == 0:
+            #         file_number = max_file_number
+            #     (first_line, 
+            #      last_line,
+            #      ) = get_scan_line_numbers(scan_file_path, file_number)
     return (first_line, last_line)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -162,12 +190,24 @@ def import_scan_file(scan_file_path, file_number=1):
     header_linenum = get_scan_header_line_number(scan_file_path)
     (first_linenum, last_linenum) = get_scan_line_numbers(
         scan_file_path, file_number)
+    
+    if ((header_linenum < 0) or (first_linenum < 0) or (last_linenum < 0)):
+        raise IndexError(
+            f"Data file number, {file_number}, exceeds the number" \
+            f" of scan file outputs; scan file may have been modifed after" \
+            f" data was captured: {scan_file_path}"
+            )
 
     skiprows = np.arange(header_linenum + 1, first_linenum)
     logger.debug("skiprows: {}".format(skiprows))
 
     nrows = 1 + last_linenum - first_linenum
     logger.debug("nrows: {}".format(nrows))
+    
+    # print(f'FINAL {first_linenum = }; {last_linenum = }')
+    # print(f'{nrows = }')
+    # print(f'{skiprows = }')
+    # print(f'{header_linenum = }')
 
     try:
         df = pd.read_table(
@@ -194,6 +234,8 @@ def import_scan_file(scan_file_path, file_number=1):
     comment_rows = df.iloc[:, 0].astype(str).apply(is_comment)
     comment_indices = df[comment_rows].index
     df.drop(comment_indices, inplace=True)
+    # Ignore empty lines in the scan file
+    df.dropna(how='all', inplace=True)
     
     # Check whether this is a Flying Scan; extract flying motor name
     if header_linenum > 0:
