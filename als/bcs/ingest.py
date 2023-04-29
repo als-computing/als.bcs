@@ -404,7 +404,7 @@ def get_data_file_header(
                                     scan_file_path=scan_file_path,
                                     file_number=file_number,
                                     step_number=step+1,
-                                    description=ROW_ERROR.FLYING_COMMAND,
+                                    description=ROW_ERROR.FLYING_COMMAND.value,
                                 ),
                                 raise_warning=raise_warning,
                             )
@@ -419,7 +419,7 @@ def get_data_file_header(
                                 header_info[key_name].append(float(motor_value))
                             except TypeError:
                                 description = " ".join([
-                                    ROW_ERROR.FLYING_VALUE,
+                                    ROW_ERROR.FLYING_VALUE.value,
                                     f"'{key_name}'",
                                 ])
                                 warn_or_raise(
