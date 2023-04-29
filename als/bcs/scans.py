@@ -156,8 +156,8 @@ def get_scan_line_numbers(scan_file_path, file_number=1):
                     subscan_is_empty = False
                     if output_file_number == file_number:
                         last_line = linenum
-                elif (not line_content) and subscan_is_empty:
-                    # Avoid parse error when subscan starts with an empty line
+                elif subscan_is_empty:
+                    # Avoid parse error: Do not start with empty line or comment
                     first_line += 1
                     last_line += 1
         else:
@@ -210,7 +210,7 @@ def import_scan_file(scan_file_path, file_number=1):
             f" data was captured: {scan_file_path}"
             )
 
-    skiprows = range(header_linenum + 1, first_linenum)
+    skiprows = list(range(header_linenum + 1, first_linenum))
     logger.debug("skiprows: {}".format(skiprows))
 
     nrows = 1 + last_linenum - first_linenum
@@ -253,18 +253,16 @@ def parse_scan_file_lines(
             nrows=nrows,
         )
     except pd.errors.ParserError:
-        # First line is a comment, and header line does not end with '\t'
-        if skiprows:
-            first_linenum = skiprows[-1] + 1
-        else:
-            first_linenum = header_linenum + 1
+        # Header line does not end with '\t'
+        skip_past_header = list(range(header_linenum+1))
         df = pd.read_table(
             scan_file_path,
             delimiter='\t',
             header=header_linenum,
+            names=scan_file_motors(scan_file_path, header_linenum),
             skip_blank_lines=False,
-            skiprows=skiprows + [first_linenum],
-            nrows=(nrows - 1),
+            skiprows=skip_past_header+skiprows,
+            nrows=nrows,
         )
     # Ignore comment lines in the scan file
     def is_comment(value: str):
