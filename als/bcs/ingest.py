@@ -373,7 +373,8 @@ def get_data_file_header(
                 # logger.debug(f"...{motor_df = }")
                 header_info["motors"] = motor_df.columns.values
                 header_info["motor_values"] = motor_df.values.T
-                if is_flying_scan(scan_file_path, file_number):
+                # if is_flying_scan(scan_file_path, file_number):
+                if is_flying_scan(scan_file_path):
                     header_info["flying"] = True
                     # Move flying motor values to primary motor values
                     flying_motor_values = header_info["motor_values"][-1]

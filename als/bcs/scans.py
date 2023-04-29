@@ -9,6 +9,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from typing import Optional, Sequence, Tuple, Union
+
 from numpy import mod
 import numpy as np
 import pandas as pd
@@ -26,6 +28,16 @@ class ScanFileNotFoundError(FileNotFoundError):
             "Could not find the input scan file "
             f"'{scan_file_path}' for data file '{data_file_path}'; "
             "verify that it has not been moved or deleted."
+        )
+        super().__init__(message, *args)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class ScanFileHeaderNotFoundError(EOFError):
+    """BCS Scan File header information was not found"""
+    def __init__(self, *args: object, scan_file_path: str) -> None:
+        message = (
+            "Could not find the header information within input scan file: "
+            f"'{scan_file_path}'."
         )
         super().__init__(message, *args)
 
@@ -69,13 +81,19 @@ def get_scan_file_path(data_file_path):
     return("")
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def get_scan_header_line_number(scan_file_path):
+def get_scan_header_line_number(scan_file_path, raise_exception=True):
     """Extract line number of motor headers from scan file.
 
         scan_file_path: Fully qualified path (dir + file) of scan file.
+        raise_exception: When header line is not found,
+            * raise ScanFileHeaderNotFoundError() if True;
+            * otherwise return(-1)
 
         RETURNS: Zero-based line number of motor header row.
-            -1 = Not found
+            -1 = Not found (if raise_exception == False)
+        
+        RAISES: ScanFileHeaderNotFoundError() if raise_exception == True
+                and a header line is not found in the scan file
     """
     consecutive_skipped_lines = 0
     def is_blank_or_comment(file_line: str) -> bool:
@@ -103,7 +121,10 @@ def get_scan_header_line_number(scan_file_path):
                 
                 consecutive_skipped_lines = 0
 
-    return(-1)
+    if raise_exception:
+        raise ScanFileHeaderNotFoundError(scan_file_path)
+    else:
+        return(-1)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def get_scan_line_numbers(scan_file_path, file_number=1):
@@ -120,9 +141,10 @@ def get_scan_line_numbers(scan_file_path, file_number=1):
     file_number_NOT_FOUND = (-1, -1)
     (first_line, last_line) = file_number_NOT_FOUND
 
-    header_linenum = get_scan_header_line_number(scan_file_path)
-    if header_linenum == -1:
-        return(first_line, last_line)
+    try:
+        header_linenum = get_scan_header_line_number(scan_file_path)
+    except ScanFileHeaderNotFoundError:
+        return file_number_NOT_FOUND
 
     file_number = file_number or 1  # If file_number is None
     output_file_number = 1
@@ -177,6 +199,29 @@ def get_scan_line_numbers(scan_file_path, file_number=1):
     return (first_line, last_line)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def scan_file_motors(
+        scan_file_path: str, 
+        header_linenum: Optional[int] = None,
+        ) -> Sequence[str]:
+    """Extract the motor names from a scan file.
+
+        scan_file_path: Fully qualified path (dir + file) of scan file.
+        header_linenum: Zero-based line number of motor header row.
+
+        RETURNS: List of motor names from the scan file.
+    """
+
+    header_linenum = (
+        header_linenum or get_scan_header_line_number(scan_file_path)
+    )
+    df = parse_scan_file_lines(
+        scan_file_path,
+        header_linenum=header_linenum,
+        )
+    
+    return df.columns.values
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def import_scan_file(scan_file_path, file_number=1):
     """Import motor positions from scan file into PANDAS DataFrame.
 
@@ -198,7 +243,7 @@ def import_scan_file(scan_file_path, file_number=1):
             f" data was captured: {scan_file_path}"
             )
 
-    skiprows = np.arange(header_linenum + 1, first_linenum)
+    skiprows = range(header_linenum + 1, first_linenum)
     logger.debug("skiprows: {}".format(skiprows))
 
     nrows = 1 + last_linenum - first_linenum
@@ -208,6 +253,14 @@ def import_scan_file(scan_file_path, file_number=1):
     # print(f'{nrows = }')
     # print(f'{skiprows = }')
     # print(f'{header_linenum = }')
+
+    return parse_scan_file_lines(
+        scan_file_path,
+        header_linenum=header_linenum,
+        skiprows=skiprows,
+        nrows=nrows,
+        # first_linenum=first_linenum,
+        ) 
 
     try:
         df = pd.read_table(
@@ -273,30 +326,32 @@ def import_scan_file(scan_file_path, file_number=1):
                     df.columns = col_names
                     df.index.rename(index_name, inplace=True)
                     df = df.reset_index()
-                print(f'{df.columns=}')
+                logger.debug(f'{df.columns=}')
 
     return(df)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def is_flying_scan(scan_file_path, file_number=1):
-    """Check whether a flying scan generated the output file_number specified
+def parse_scan_file_lines(
+        scan_file_path: str,
+        header_linenum: int = 0,
+        skiprows: Optional[Sequence[int]] = None,
+        nrows: int = 0,
+        # first_linenum: Optional[int] = None,
+        ) -> pd.DataFrame:
+    """Import motor positions from scan file into PANDAS DataFrame.
 
         scan_file_path: Fully qualified path (dir + file) of scan file.
-        file_number: One-based file number (extracted from data file path).
+        header_linenum: Zero-based line number of motor header row.
+        skiprows: List of rows to ignore when parsing scan file.
+        nrows: number of rows to read after the header.
+        first_linenum: Zero-based line number of first requested scan command
 
-        RETURNS: True if a flying motor is found; False otherwise
+        RETURNS: PANDAS DataFrame of imported motor positions
+                    for output file_number specified.
     """
 
-    header_linenum = get_scan_header_line_number(scan_file_path)
-    (first_linenum, last_linenum) = get_scan_line_numbers(
-        scan_file_path, file_number)
-
-    skiprows = np.arange(header_linenum + 1, first_linenum)
-    logger.debug("skiprows: {}".format(skiprows))
-
-    nrows = 1 + last_linenum - first_linenum
-    logger.debug("nrows: {}".format(nrows))
+    skiprows = list(skiprows or ())
+    # first_linenum = first_linenum or (header_linenum + 1)
 
     try:
         df = pd.read_table(
@@ -309,6 +364,10 @@ def is_flying_scan(scan_file_path, file_number=1):
         )
     except pd.errors.ParserError:
         # First line is a comment, and header line does not end with '\t'
+        if skiprows:
+            first_linenum = skiprows[-1] + 1
+        else:
+            first_linenum = header_linenum + 1
         df = pd.read_table(
             scan_file_path,
             delimiter='\t',
@@ -317,6 +376,139 @@ def is_flying_scan(scan_file_path, file_number=1):
             skiprows=skiprows + [first_linenum],
             nrows=(nrows - 1),
         )
+    # Ignore comment lines in the scan file
+    def is_comment(value: str):
+        return value.strip().startswith('#')
+    comment_rows = df.iloc[:, 0].astype(str).apply(is_comment)
+    comment_indices = df[comment_rows].index
+    df.drop(comment_indices, inplace=True)
+    # Ignore empty lines in the scan file
+    df.dropna(how='all', inplace=True)
+
+    # There can be at most ONE unnamed column (count time or flying motor)
+    unnamed_columns = df.columns[
+        df.columns.str.startswith("Unnamed")
+        ]
+    excess_unnamed_columns = unnamed_columns[1:]
+    df.drop(columns=excess_unnamed_columns, inplace=True)
+    
+    # Check whether this is a Flying Scan; extract flying motor name
+    (_, flying_name) = is_flying_scan(
+        scan_file_path, 
+        return_motor=True,
+        header_linenum=header_linenum,
+        )
+    if flying_name:
+        # Add Flying Motor to column names
+        if df.columns[-1].startswith("Unnamed"):
+            df.columns = [*df.columns[:-1], flying_name]
+        else:
+            # Repair scan file with correct number of columns
+            index_name = df.columns[0]
+            col_names = [*df.columns[1:], flying_name]
+            df.columns = col_names
+            df.index.rename(index_name, inplace=True)
+            df = df.reset_index()
+        logger.debug(f'{df.columns=}')
+
+    # if header_linenum > 0:
+    #     with open(scan_file_path, 'r') as scan_file:
+    #         first_line = scan_file.readline().rstrip()
+    #         logger.debug(f"first_line: {first_line}")
+        
+    #     # first_line_parts = first_line.lower().rsplit('flying ', 1)
+    #     first_line_parts = first_line.replace(
+    #         'flying ', 'Flying ').rsplit('Flying ', 1)
+    #     logger.debug(f"first_line_parts #1: {first_line_parts}")
+    #     if len(first_line_parts) > 1:
+    #         first_line = first_line_parts[-1]
+    #         first_line_parts = first_line.rsplit('(', 1)
+    #         logger.debug(f"first_line_parts #2: {first_line_parts}")
+    #         if len(first_line_parts) > 1:
+    #             first_line = first_line_parts[0]
+    #             flying_name = first_line.strip()
+    #             logger.debug(f"flying_name: {flying_name}")
+                
+                # # Add Flying Motor to column names
+                # if df.columns[-1].startswith("Unnamed"):
+                #     df.columns = [*df.columns[:-1], flying_name]
+                # else:
+                #     # Repair scan file with correct number of columns
+                #     index_name = df.columns[0]
+                #     col_names = [*df.columns[1:], flying_name]
+                #     df.columns = col_names
+                #     df.index.rename(index_name, inplace=True)
+                #     df = df.reset_index()
+                # logger.debug(f'{df.columns=}')
+
+    return(df)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def is_flying_scan(
+        scan_file_path: str, 
+        /, 
+        file_number: Optional[int] = None, 
+        *,
+        return_motor: bool = False,
+        header_linenum: Optional[int] = None,
+        ) -> Union[bool, Tuple[bool, Optional[str]]]:
+    """Check whether a flying scan generated the output file_number specified.
+
+        scan_file_path: Fully qualified path (dir + file) of scan file.
+        file_number: One-based file number (extracted from data file path).
+                     [DEPRECATED]: This parameter has no effect.
+        return_motor: If True, also return the name of the flying motor.
+        header_linenum: Zero-based line number of motor header row.
+
+        RETURNS: True if a flying motor is found; False otherwise.
+            If return_motor == True, this function returns a tuple:
+            * (True, name_of_flying_motor: str) if a flying motor is found;
+            * (False, None) otherwise.
+    """
+
+    header_linenum = (
+        header_linenum or get_scan_header_line_number(scan_file_path)
+    )
+    if file_number is not None:
+        raise DeprecationWarning(
+            "'file_number' parameter is no longer used by 'is_flying_scan()'"
+        )
+    # header_linenum = get_scan_header_line_number(scan_file_path)
+    # (first_linenum, last_linenum) = get_scan_line_numbers(
+    #     scan_file_path, file_number)
+    
+    # if ((header_linenum < 0) or (first_linenum < 0) or (last_linenum < 0)):
+    #     raise IndexError(
+    #         f"Data file number ({file_number}) exceeds the number" \
+    #         f" of scan file outputs; scan file may have been modifed after" \
+    #         f" data was captured: {scan_file_path}"
+    #         )
+
+    # skiprows = np.arange(header_linenum + 1, first_linenum)
+    # logger.debug("skiprows: {}".format(skiprows))
+
+    # nrows = 1 + last_linenum - first_linenum
+    # logger.debug("nrows: {}".format(nrows))
+
+    # try:
+    #     df = pd.read_table(
+    #         scan_file_path,
+    #         delimiter='\t',
+    #         header=header_linenum,
+    #         skip_blank_lines=False,
+    #         skiprows=skiprows,
+    #         nrows=nrows,
+    #     )
+    # except pd.errors.ParserError:
+    #     # First line is a comment, and header line does not end with '\t'
+    #     df = pd.read_table(
+    #         scan_file_path,
+    #         delimiter='\t',
+    #         header=header_linenum,
+    #         skip_blank_lines=False,
+    #         skiprows=skiprows + [first_linenum],
+    #         nrows=(nrows - 1),
+    #     )
     
     # Check whether this is a Flying Scan; extract flying motor name
     if header_linenum > 0:
@@ -324,25 +516,30 @@ def is_flying_scan(scan_file_path, file_number=1):
             first_line = scan_file.readline().rstrip()
             logger.debug(f"first_line: {first_line}")
         
-        # first_line_parts = first_line.lower().rsplit('flying ', 1)
         first_line_parts = first_line.replace(
             'flying ', 'Flying ').rsplit('Flying ', 1)
         logger.debug(f"first_line_parts #1: {first_line_parts}")
+
         if len(first_line_parts) > 1:
+            # This is a flying scan
+            if not return_motor:
+                return True
+            
             first_line = first_line_parts[-1]
             first_line_parts = first_line.rsplit('(', 1)
             logger.debug(f"first_line_parts #2: {first_line_parts}")
+
             if len(first_line_parts) > 1:
                 first_line = first_line_parts[0]
                 flying_name = first_line.strip()
                 logger.debug(f"flying_name: {flying_name}")
 
-                return True
-                
-                # Return name of flying motor also?
-                # return(True, flying_name)
+                return(True, flying_name)
 
-    return False
+    if return_motor:
+        return (False, None)
+    else:
+        return False
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
