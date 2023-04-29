@@ -223,7 +223,7 @@ def import_scan_file(scan_file_path, file_number=1):
     (first_linenum, last_linenum) = get_scan_line_numbers(
         scan_file_path, file_number)
     
-    if ((header_linenum < 0) or (first_linenum < 0) or (last_linenum < 0)):
+    if (first_linenum < 0) or (last_linenum < 0):
         raise IndexError(
             f"Data file number ({file_number}) exceeds the number" \
             f" of scan file outputs; scan file may have been modifed after" \
