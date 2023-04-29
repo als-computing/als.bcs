@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from typing import Optional, Sequence, Tuple, Union
+from warnings import warn
 
 import pandas as pd
 
@@ -350,9 +351,10 @@ def is_flying_scan(
         header_linenum or get_scan_header_line_number(scan_file_path)
     )
     if file_number is not None:
-        raise DeprecationWarning(
+        deprecated = DeprecationWarning(
             "'file_number' parameter is no longer used by 'is_flying_scan()'"
         )
+        warn(deprecated)
 
     # Check whether this is a Flying Scan; extract flying motor name
     if header_linenum > 0:
