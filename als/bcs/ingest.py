@@ -29,11 +29,9 @@ except ImportError:
 import pandas as pd
 
 from .data import DataFileNumbers, get_data_file_numbers, read_data_file
+from .errors import ScanFileNotFoundError, ScanFileRowWarning, warn_or_raise
 from .find import replace_subpath
-from .scans import (
-    import_scan_file, is_flying_scan, 
-    ScanFileNotFoundError, ScanFileRowWarning,
-)
+from .scans import import_scan_file, is_flying_scan
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Configure environment
@@ -249,13 +247,18 @@ def read_automation_run(file_path: str) -> Sequence[Mapping[str, Any]]:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def get_data_file_header(
         data_file_path: str, 
+        /,
         subpath_replace_dict: dict=None,
+        *,
+        raise_warning: bool=False,
         ) -> Mapping[str, Any]:
     """Extract the data file header.
 
         data_file_path: Fully qualified file path (dir + file) of data.
         subpath_replace_dict: {old_subpath: new_subpath, ...}
             *) Used for locating input scan file
+        raise_warning: If True, raise an encountered warning as an Exception;
+            otherwise report the warning.
 
         RETURNS: dict with header fields
     """
@@ -396,13 +399,14 @@ def get_data_file_header(
                         header_info[key_name] = []
                     for step, motor_value_str in enumerate(flying_motor_values):
                         if not isinstance(flying_motor_values, str):
-                            warn(
+                            warn_or_raise(
                                 ScanFileRowWarning(
                                     scan_file_path=scan_file_path,
                                     file_number=file_number,
                                     step_number=step+1,
                                     description=ROW_ERROR.FLYING_COMMAND,
-                                )
+                                ),
+                                raise_warning=raise_warning,
                             )
                             continue
                         motor_value_str = motor_value_str.strip().lower().lstrip('flying')
@@ -418,13 +422,14 @@ def get_data_file_header(
                                     ROW_ERROR.FLYING_VALUE,
                                     f"'{key_name}'",
                                 ])
-                                warn(
+                                warn_or_raise(
                                     ScanFileRowWarning(
                                         scan_file_path=scan_file_path,
                                         file_number=file_number,
                                         step_number=step+1,
                                         description=description,
-                                    )
+                                    ),
+                                    raise_warning=raise_warning,
                                 )
                     header_info["motor_values"] = header_info["motor_values"][:-1]
                 continue
