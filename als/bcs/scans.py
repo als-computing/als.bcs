@@ -9,7 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from typing import Optional, Sequence, Tuple, Union
+from typing import Generic, Optional, Sequence, Tuple, TypeVar, Union
 from warnings import warn
 
 import pandas as pd
@@ -39,6 +39,65 @@ class ScanFileHeaderNotFoundError(EOFError):
             f"'{scan_file_path}'."
         )
         super().__init__(message, *args)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ErrorOrWarning = TypeVar(
+    "ErrorOrWarning", bound=Union[Exception, Warning],
+)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class ScanFileRowException(Generic[ErrorOrWarning]):
+    """BCS Scan File row has invalid value(s) or format"""
+    def __init__(
+            self, 
+            *args: object, 
+            scan_file_path: str, 
+            file_number: int = -1,
+            step_number: int = -1,
+            description: str = "",
+            ) -> None:
+        messages = [
+            self._error_message(
+                *args, 
+                scan_file_path=scan_file_path, 
+                file_number=file_number,
+                step_number=step_number,
+                description=description,
+                ),
+            " Check for missing values, spaces instead of tabs, or"
+            " extra header rows."
+        ]
+        message = ''.join(messages)
+        super().__init__(message, *args)
+
+    def _error_message(
+            self, 
+            *args: object, 
+            scan_file_path: str, 
+            file_number: int = -1,
+            step_number: int = -1,
+            description: str = "",
+            ) -> None:
+        messages = [
+            "Invalid value or format found in input scan file: ",
+            f"'{scan_file_path}'"
+        ]
+        if file_number:
+            messages.append(f"; file output number: {file_number}")
+        if step_number:
+            messages.append(f"; step number {step_number}")
+        messages.append(".")
+        if description:
+            messages.append(f" {description}")
+            if description[-1] != ".":
+                messages.append(".")
+        message = ''.join(messages)
+
+        return message
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ScanFileRowError = ScanFileRowException[ValueError]
+ScanFileRowWarning = ScanFileRowException[UserWarning]
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

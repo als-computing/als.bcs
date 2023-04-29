@@ -13,9 +13,10 @@ import sys
 import os
 
 from collections import OrderedDict
-from enum import auto, IntEnum
+from enum import auto, Enum, IntEnum
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+from warnings import warn
 
 from datetime import datetime
 import pytz
@@ -29,7 +30,10 @@ import pandas as pd
 
 from .data import DataFileNumbers, get_data_file_numbers, read_data_file
 from .find import replace_subpath
-from .scans import import_scan_file, is_flying_scan, ScanFileNotFoundError
+from .scans import (
+    import_scan_file, is_flying_scan, 
+    ScanFileNotFoundError, ScanFileRowWarning,
+)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Configure environment
@@ -277,6 +281,11 @@ def get_data_file_header(
     get_memo = False
     is_time_scan = False
 
+    class ROW_ERROR(Enum):
+        FLYING_COMMAND = "Invalid or missing command for flying motor"
+        FLYING_VALUE = "Invalid or missing value for flying motor"
+        MOTOR_VALUE = "Invalid or missing value for motor"
+
     def handle_time_scan_numbers(header_linenum: int, file_line: str) -> bool:
         """Process a TimeScan header line that starts with a number.
 
@@ -385,14 +394,38 @@ def get_data_file_header(
                         ]
                     for key_name in key_names:
                         header_info[key_name] = []
-                    for motor_value_str in flying_motor_values:
+                    for step, motor_value_str in enumerate(flying_motor_values):
+                        if not isinstance(flying_motor_values, str):
+                            warn(
+                                ScanFileRowWarning(
+                                    scan_file_path=scan_file_path,
+                                    file_number=file_number,
+                                    step_number=step+1,
+                                    description=ROW_ERROR.FLYING_COMMAND,
+                                )
+                            )
+                            continue
                         motor_value_str = motor_value_str.strip().lower().lstrip('flying')
                         motor_value_str = motor_value_str.strip().lstrip('(').rstrip(')')
                         for (motor_value, key_name) in zip(
                                 motor_value_str.split(','),
                                 key_names,
                                 ):
-                            header_info[key_name].append(float(motor_value))
+                            try:
+                                header_info[key_name].append(float(motor_value))
+                            except TypeError:
+                                description = " ".join([
+                                    ROW_ERROR.FLYING_VALUE,
+                                    f"'{key_name}'",
+                                ])
+                                warn(
+                                    ScanFileRowWarning(
+                                        scan_file_path=scan_file_path,
+                                        file_number=file_number,
+                                        step_number=step+1,
+                                        description=description,
+                                    )
+                                )
                     header_info["motor_values"] = header_info["motor_values"][:-1]
                 continue
             if get_memo:
