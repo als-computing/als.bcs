@@ -9,16 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from typing import Generic, TypeVar, Union
 from warnings import warn
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# TYPES
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ErrorOrWarning = TypeVar(
-    "ErrorOrWarning", bound=Union[Exception, Warning],
-)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,8 +38,22 @@ class ScanFileHeaderNotFoundError(EOFError):
         super().__init__(message, *args)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-class ScanFileRowException(Generic[ErrorOrWarning]):
-    """BCS Scan File row has invalid value(s) or format"""
+class ScanFileRowError(ValueError):
+    """BCS Scan File row has invalid value(s) or format [Error]"""
+    def __init__(self, *args, **kwargs) -> None:
+        message = ScanFileRowMessage(*args, **kwargs).message
+        super().__init__(message, *args)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class ScanFileRowWarning(UserWarning):
+    """BCS Scan File row has invalid value(s) or format [Warning]"""
+    def __init__(self, *args, **kwargs) -> None:
+        message = ScanFileRowMessage(*args, **kwargs).message
+        super().__init__(message, *args)
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class ScanFileRowMessage():
+    """BCS Scan File row has invalid value(s) or format [Message Builder]"""
     def __init__(
             self, 
             *args: object, 
@@ -68,8 +73,7 @@ class ScanFileRowException(Generic[ErrorOrWarning]):
             " Check for missing values, spaces instead of tabs, or"
             " extra header rows."
         ]
-        message = ''.join(messages)
-        super().__init__(message, *args)
+        self.message = ''.join(messages)
 
     def _error_message(
             self, 
@@ -83,9 +87,9 @@ class ScanFileRowException(Generic[ErrorOrWarning]):
             "Invalid value or format found in input scan file: ",
             f"'{scan_file_path}'"
         ]
-        if file_number:
+        if file_number > 0:
             messages.append(f"; file output number: {file_number}")
-        if step_number:
+        if step_number > 0:
             messages.append(f"; step number {step_number}")
         messages.append(".")
         if description:
@@ -95,10 +99,6 @@ class ScanFileRowException(Generic[ErrorOrWarning]):
         message = ''.join(messages)
 
         return message
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ScanFileRowError = ScanFileRowException[ValueError]
-ScanFileRowWarning = ScanFileRowException[UserWarning]
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

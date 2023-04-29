@@ -15,7 +15,7 @@ import pandas as pd
 
 from .errors import (
     ScanFileHeaderNotFoundError, ScanFileNotFoundError, 
-    ScanFileRowError, ScanFileRowException, ScanFileRowWarning,
+    ScanFileRowError, ScanFileRowWarning,
     warn_or_raise,
 )
 
